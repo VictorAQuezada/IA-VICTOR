@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gemini AI - Interfaz Personalizada</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #343541;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .profile-section {
+            text-align: center;
+            padding: 20px;
+            background-color: #444654;
+            border-bottom: 1px solid #565869;
+        }
+
+        .profile-section img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 10px;
+        }
+
+        .profile-section h1 {
+            font-size: 1.2em;
+            margin: 5px 0;
+        }
+
+        .profile-section h3 {
+            font-size: 1em;
+            margin: 5px 0;
+            color: #c5c5d2;
+        }
+
+        .chat-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            margin-bottom: 100px; /* Espacio para el input fijo */
+        }
+
+        .message {
+            display: flex;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #444654;
+        }
+
+        .message.user {
+            background-color: #343541;
+        }
+
+        .message-content {
+            flex-grow: 1;
+            white-space: pre-wrap;
+        }
+
+        .input-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            background-color: #343541;
+            border-top: 1px solid #565869;
+        }
+
+        .input-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            padding-right: 200px;
+            border-radius: 10px;
+            border: 1px solid #565869;
+            background-color: #40414f;
+            color: white;
+            resize: none;
+            font-size: 1em;
+            line-height: 1.5;
+            height: 60px;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #8e8ea0;
+        }
+
+        .button-container {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background-color: #19c37d;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 0.9em;
+        }
+
+        button:hover {
+            background-color: #15a067;
+        }
+
+        /* Estilos para el scroll */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #343541;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #565869;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666980;
+        }
+
+        #respuesta {
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            display: none;
+            color: #c5c5d2;
+            text-align: center;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="profile-section">
+        <img src="image/perfil.png" alt="Icono">
+        <h1>Victor Antonio Quezada Ramirez</h1>
+        <h3>23-EIST-8-001</h3>
+    </div>
+
+    <div class="chat-container" id="chatContainer">
+        <!-- Los mensajes se agregarán aquí dinámicamente -->
+    </div>
+
+    <div class="input-container">
+        <div class="input-wrapper">
+            <textarea 
+                id="inputText" 
+                placeholder="Escribe tu mensaje aquí..."
+                rows="1"
+                onkeydown="if(event.keyCode == 13 && !event.shiftKey) { event.preventDefault(); enviarPregunta(); document.getElementById('inputText').value = ''; }">
+            </textarea>
+
+            <div class="button-container">
+                <button onclick="enviarPregunta()">📨 Enviar</button>
+                <button onclick="limpiar()">🗑️ Limpiar</button>
+                <button onclick="copiarRespuesta()">📋 Copiar</button>
+                <button onclick="guardarRespuesta()">💾 Guardar</button>
+            </div>
+        </div>
+        <pre id="respuesta"></pre>
+    </div>
+
+    <div id="loading" class="loading">
+        Procesando respuesta...
+    </div>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+    <script>
+        async function enviarPregunta() {
+            const inputText = document.getElementById("inputText").value;
+            const respuestaDiv = document.getElementById("chatContainer");
+
+            if (!inputText) {
+                agregarMensaje("❗Por favor escribe algo.", false);
+                return;
+            }
+
+            const body = {
+                contents: [{
+                    parts: [{ text: inputText }]
+                }]
+            };
+
+            const loading = document.getElementById("loading");
+            loading.style.display = "block";
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+                const respuesta = data.candidates?.[0]?.content?.parts?.[0]?.text || "❌ No se obtuvo una respuesta.";
+                agregarMensaje(respuesta, false);
+                document.getElementById("respuesta").innerText = respuesta;
+            } catch (error) {
+                console.error("Error al procesar la solicitud:", error);
+                agregarMensaje("❌ Hubo un error al procesar tu solicitud.", false);
+            } finally {
+                loading.style.display = "none";
+            }
+        }
+
+        function agregarMensaje(texto, esUsuario) {
+            const chatContainer = document.getElementById("chatContainer");
+            const mensaje = document.createElement("div");
+            mensaje.className = `message ${esUsuario ? "user" : ""}`;
+            mensaje.innerHTML = `<div class="message-content">${texto}</div>`;
+            chatContainer.appendChild(mensaje);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function limpiar() {
+            document.getElementById("chatContainer").innerHTML = "";
+            document.getElementById("respuesta").innerText = "";
+        }
+
+        function copiarRespuesta() {
+            const respuesta = document.getElementById("respuesta").innerText;
+            if (respuesta) {
+                navigator.clipboard.writeText(respuesta)
+                    .then(() => alert("Respuesta copiada al portapapeles."))
+                    .catch(err => console.error("Error al copiar:", err));
+            }
+        }
+
+        function guardarRespuesta() {
+            const respuesta = document.getElementById("respuesta").innerText;
+            if (respuesta) {
+                const blob = new Blob([respuesta], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "respuesta.txt";
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+    </script>
+</body>
+</html>
